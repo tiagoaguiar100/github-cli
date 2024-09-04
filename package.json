@@ -1,0 +1,12 @@
+{
+  "name": "github-cli",
+  "version": "1.0.0",
+  "description": "Command-line interface for GitHub",
+  "repository": "https://github.com/tiagoaguiar100/github-cli",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tiago Aguiar",
+  "license": "ISC"
+}
