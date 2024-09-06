@@ -8,6 +8,7 @@
     "start": "npm run build && node --env-file=.env.local bin/index.js",
     "build": "tsc --project tsconfig.json",
     "deploy": "npm run build && npm install -g .",
+    "lint": "npx eslint --fix */**.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Tiago Aguiar",
@@ -18,9 +19,13 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.9.1",
     "@types/node": "^22.5.3",
     "@types/ramda": "^0.30.2",
-    "@types/yargs": "^17.0.33"
+    "@types/yargs": "^17.0.33",
+    "eslint": "^9.9.1",
+    "globals": "^15.9.0",
+    "typescript-eslint": "^8.4.0"
   },
   "bin": {
     "github-cli": "./bin/index.js"
