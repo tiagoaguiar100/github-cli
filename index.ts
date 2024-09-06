@@ -18,7 +18,7 @@ yargs(hideBin(process.argv))
     getUsersByLocation(db, argv.location as string);
   })
   .command('get-users-by-language <language>', 'display users from database with a repositories on that language', () => {}, (argv) => {
-    getUsersByLanguage(db, argv.location as string);
+    getUsersByLanguage(db, argv.language as string);
   })
   .demandCommand(1)
   .parse()
