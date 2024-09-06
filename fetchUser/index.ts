@@ -1,5 +1,6 @@
 import * as https from 'https';
 import { isNotEmpty } from 'ramda';
+import { insertUser, User } from '../repository/user';
 
 const headers =  { 
     'X-GitHub-Api-Version': '2022-11-28', 
@@ -8,7 +9,8 @@ const headers =  {
     "user-agent": 'node.js'
 };
 
-export const fetchUser = async (username: any) => {
+export const fetchUser = async (db: any, username: any) => {
+    let user = {} as User;
     https.get(`https://api.github.com/users/${username}`, {headers}, res => {
         let data: any[] = [];    
         res.on('data', chunk => {
@@ -16,8 +18,13 @@ export const fetchUser = async (username: any) => {
         });
     
         res.on('end', () => {
-            const user = JSON.parse(Buffer.concat(data).toString());
-            console.log('User:', user.login, user.name, user.location);
+            const userResponse = JSON.parse(Buffer.concat(data).toString());
+            console.log('User:', userResponse.login, userResponse.name, userResponse.location);
+            user = {
+                login: userResponse.login,
+                name: userResponse.name,
+                location: userResponse.location.toLowerCase()
+            }
         });
     }).on('error', err => {
         console.log('Error: ', err.message);
@@ -25,6 +32,8 @@ export const fetchUser = async (username: any) => {
 
     const repoInfo = await fetchReposByUser(username);
     console.log(repoInfo);
+
+    insertUser(db, user);
 }
 
 const fetchReposByUser = (username: any) => {
@@ -42,8 +51,8 @@ const fetchReposByUser = (username: any) => {
                     let moreLanguages: any;
                     if(isNotEmpty(repo.language))  {
                         moreLanguages = await fetchLanguagesByRepo(username, repo.name);
-                        const language = moreLanguages ? Object.keys(moreLanguages) : [repo.language];
-                        repos.push({name: repo.name, language: language})
+                        const languages = moreLanguages ? Object.keys(moreLanguages) : [repo.language];
+                        repos.push({name: repo.name, languages})
                     } else {
                         repos.push({name: repo.name})
                     }
