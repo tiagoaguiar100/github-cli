@@ -1,8 +1,9 @@
 
 import { ParameterizedQuery as PQ } from 'pg-promise';
+import { isEmpty } from 'ramda';
 
 export interface User {
-    login: string,
+    id: string,
     name: string,
     location: string,
     languages?: string[]
@@ -10,7 +11,7 @@ export interface User {
 
 export function getUser(db: any, username: string) {
   const findUser = new PQ({
-    text: 'SELECT * FROM public."User" WHERE login = $1', 
+    text: 'SELECT * FROM public."User" WHERE id = $1', 
     values: [username]
   });
 
@@ -30,36 +31,11 @@ export function getUsers(db: any) {
 
   db.any(findUsers)
     .then((users: any) => {
-      console.log(users);
-    })
-    .catch((error: Error) => {
-      console.log(error);
-    });
-}
-
-export function getUsersByLocation(db: any, location: string) {
-  const findUsers = new PQ({
-    text: 'SELECT * FROM public."User" WHERE LOWER(location) = LOWER($1)', 
-    values: [location]
-  });
-
-  db.any(findUsers)
-    .then((users: any) => {
-      console.log(users);
-    })
-    .catch((error: Error) => {
-      console.log(error);
-    });
-}
-
-export function getUsersByLanguage(db: any, language: string) {
-  const findUsers = new PQ({
-    text: 'SELECT * FROM public."User" where $1=ANY(languages)', 
-    values: [language.toLowerCase()]});
-
-  db.any(findUsers)
-    .then((users: any) => {
-      console.log(users);
+      if(isEmpty(users)) {
+        console.log("No results")
+      } else {
+        console.log(users);
+      }
     })
     .catch((error: Error) => {
       console.log(error);
@@ -82,7 +58,7 @@ export function getUsersBy(db: any, location: string, language: string) {
     values = [language];
   }
   else {
-    return '';
+    return getUsers(db);
   }
 
   const findUsers = new PQ({
@@ -91,8 +67,12 @@ export function getUsersBy(db: any, location: string, language: string) {
   });
   
   db.any(findUsers)
-    .then((users: any) => {
-      console.log(users);
+    .then((users: User[]) => {
+      if(isEmpty(users)) {
+        console.log("No results")
+      } else {
+        console.log(users);
+      }
     })
     .catch((error: Error) => {
       console.log(error);
@@ -100,9 +80,10 @@ export function getUsersBy(db: any, location: string, language: string) {
 }
 
 export async function insertUser(db: any, user: User) {
-  await db.none('INSERT INTO public."User"(id, login, name, location) VALUES(2, ${user.login}, ${user.name}, ${user.location})', {
+  await db.none('INSERT INTO public."User"(id, name, location)' +
+    'VALUES(${user.id}, ${user.name}, ${user.location})', {
     user
   });
 
-  getUser(db, user.login);
+  getUser(db, user.id);
 }
