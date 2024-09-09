@@ -10,7 +10,7 @@ import { input, select } from '@inquirer/prompts';
 
 async function main() {
 
-  const db = initDB();
+  initDB();
 
   console.log(
     chalk.green("GitHub CLI")
@@ -40,16 +40,16 @@ async function main() {
     switch (answer) {
     case 'fetch-user':
       input({ message: 'Enter a username' }).then(
-        username => fetchUser(db, username)
+        username => fetchUser(username)
       );
       break;
     case 'get-users':
-      getUsers(db);
+      getUsers();
       break;
     case 'get-users-by': {
       const location = await input({ message: '(Optional) Enter a location' });
       const language = await input({ message: '(Optional) Enter a language' });
-      getUsersBy(db, location, language);
+      getUsersBy(location, language);
       break;
     }
     default:

@@ -1,6 +1,6 @@
 import * as https from 'https';
-import { isNotEmpty, uniq } from 'ramda';
-import { insertUser, User } from '../repository/user';
+import { isEmpty, isNotEmpty, uniq } from 'ramda';
+import { getUser, insertUser, User } from '../repository/user';
 
 const headers =  { 
   'X-GitHub-Api-Version': '2022-11-28', 
@@ -9,7 +9,7 @@ const headers =  {
   "user-agent": 'node.js'
 };
 
-export const fetchUser = async (db: any, username: any) => {
+export const fetchUser = async (username: string) => {
   new Promise((resolve, reject) => {
     https.get(`https://api.github.com/users/${username}`, 
       {headers}, res => {
@@ -20,8 +20,11 @@ export const fetchUser = async (db: any, username: any) => {
     
         res.on('end', () => {
           const response = JSON.parse(Buffer.concat(data).toString());
-          let user = {}; 
-          console.log(response);
+          let user = {};
+          if(response.status && response.message){
+            reject(response.message);
+          }
+
           if(isNotEmpty(response)) {
             user = {
               id: response.login,
@@ -32,25 +35,27 @@ export const fetchUser = async (db: any, username: any) => {
           resolve(user)
         });
       }).on('error', err => {
-      console.log('Error: ', err.message);
-      reject(err);
+      reject(err.message);
     });
   }).then(async result => {
-    console.log(result)
     if(isNotEmpty(result)) {
-      console.log(result)
       const repoInfo = await fetchReposByUser(username);
-      console.log(repoInfo);
-      const languages: string[] = [];
+      let languages: string[] = [];
       for (const repo of repoInfo) {
-        languages.concat(repo.languages);
+        languages = languages.concat(repo.languages);
       }
       const user = {...(result as User), languages: uniq(languages)}
-      insertUser(db, user as User);
-    } else {
-      console.log(`User ${username} not found`);
+
+      const userDb = getUser(username, true);
+      if(isEmpty(userDb)) {
+        insertUser(user as User);
+        console.log("User added successfully.");
+        getUser(username);
+      } else {
+        console.log("User already exists.");
+      }
     }
-  });
+  }).catch(error => console.error(error));
 }
 
 const fetchReposByUser = (username: string): Promise<any> => {
@@ -64,11 +69,14 @@ const fetchReposByUser = (username: string): Promise<any> => {
         
         res.on('end', async () => {
           const response = JSON.parse(Buffer.concat(data).toString());
+          if(response.status && response.message){
+            reject(response.message);
+          }
+
           resolve(await joinRepoLanguages(response, username));
         });
       }).on('error', err => {
-      console.log('Error: ', err.message);
-      reject(err);
+      reject(err.message);
     });
   });
 }

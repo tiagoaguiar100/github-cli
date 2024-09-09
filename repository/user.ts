@@ -1,6 +1,6 @@
 
-import { ParameterizedQuery as PQ } from 'pg-promise';
-import { isEmpty } from 'ramda';
+import { errors, ParameterizedQuery as PQ } from 'pg-promise';
+import { getDBConnection } from './database';
 
 export interface User {
     id: string,
@@ -9,44 +9,56 @@ export interface User {
     languages?: string[]
 }
 
-export function getUser(db: any, username: string) {
+export function getUser(username: string, ignoreNoData?: boolean): User {
   const findUser = new PQ({
     text: 'SELECT * FROM public."User" WHERE id = $1', 
     values: [username]
   });
 
-  db.one(findUser)
+  return getDBConnection().one(findUser)
     .then((user: any) => {
       console.log(user);
+      return user;
     })
-    .catch((error: Error) => {
-      console.log(error);
+    .catch((error: errors.QueryResultError) => {
+      if(error.code === errors.queryResultErrorCode.noData && ignoreNoData) {
+        return;
+      }
+
+      if(error.code === errors.queryResultErrorCode.noData) {
+        console.log("No results.");
+      } else {
+        console.log(error);
+      }
     });
 }
 
-export function getUsers(db: any) {
+export function getUsers(): User[] {
   const findUsers = new PQ({
     text: 'SELECT * FROM public."User"'
   });
 
-  db.any(findUsers)
+  return getDBConnection().many(findUsers)
     .then((users: any) => {
-      if(isEmpty(users)) {
-        console.log("No results")
-      } else {
-        console.log(users);
-      }
+      console.log(users);
+      return users;
     })
-    .catch((error: Error) => {
-      console.log(error);
+    .catch((error: errors.QueryResultError) => {
+      if(error.code === errors.queryResultErrorCode.noData) {
+        console.log("No results");
+      } else {
+        console.log(error);
+      }
     });
 }
 
-export function getUsersBy(db: any, location: string, language: string) {
+export function getUsersBy(location: string, language: string): User[] {
   let whereClause;
   let values;
+
   if(location && language) {
-    whereClause = "LOWER(location)=LOWER($1) AND $2=ANY(languages)";
+    whereClause = "LOWER(location)=LOWER($1) AND " +
+    "LOWER($2)=ANY(LOWER(languages::text)::text[])";
     values = [location, language];
   }
   else if(location) {
@@ -54,11 +66,11 @@ export function getUsersBy(db: any, location: string, language: string) {
     values = [location];
   }
   else if(language) {
-    whereClause =  "$1=ANY(languages)";
+    whereClause =  "LOWER($1)=ANY(LOWER(languages::text)::text[]) "; 
     values = [language];
   }
   else {
-    return getUsers(db);
+    return getUsers();
   }
 
   const findUsers = new PQ({
@@ -66,24 +78,23 @@ export function getUsersBy(db: any, location: string, language: string) {
     values: values
   });
   
-  db.any(findUsers)
+  return getDBConnection().many(findUsers)
     .then((users: User[]) => {
-      if(isEmpty(users)) {
-        console.log("No results")
-      } else {
-        console.log(users);
-      }
+      console.log(users);
+      return users;
     })
-    .catch((error: Error) => {
-      console.log(error);
+    .catch((error: errors.QueryResultError) => {
+      if(error.code === errors.queryResultErrorCode.noData) {
+        console.log("No results");
+      } else {
+        console.log(error);
+      }
     });
 }
 
-export async function insertUser(db: any, user: User) {
-  await db.none('INSERT INTO public."User"(id, name, location)' +
-    'VALUES(${user.id}, ${user.name}, ${user.location})', {
-    user
-  });
-
-  getUser(db, user.id);
+export async function insertUser(user: User) {
+  await getDBConnection().
+    query('INSERT INTO public."User"(${this:name}) VALUES(${this:csv})', 
+      user
+    );
 }
