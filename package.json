@@ -5,7 +5,8 @@
   "repository": "https://github.com/tiagoaguiar100/github-cli",
   "main": "dist/index.js",
   "scripts": {
-    "start": "npm run build && node --env-file=.env.local dist/index.js",
+    "start": "node --env-file=.env.local dist/index.js",
+    "dev": "npm run build && node --env-file=.env.local dist/index.js",
     "build": "tsc --project tsconfig.json && copyfiles -u 1 **/sql/*.sql dist/sql",
     "deploy": "npm run build && npm install -g .",
     "lint": "npx eslint --fix **/*.ts",

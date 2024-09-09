@@ -8,6 +8,13 @@ import {
 } from './repository/user';
 import { input, select } from '@inquirer/prompts';
 
+function printAndExit(result: any) {
+  if(result) {
+    console.log(result);
+  }
+  process.exit()
+}
+
 async function main() {
 
   initDB();
@@ -40,19 +47,28 @@ async function main() {
     switch (answer) {
     case 'fetch-user':
       input({ message: 'Enter a username' }).then(
-        username => fetchUser(username)
+        username => fetchUser(username).then(
+          (result: any) => {
+            printAndExit(result)
+          }
+        )
       );
       break;
     case 'get-users':
-      getUsers();
+      getUsers().then(
+        (result: any) => printAndExit(result)
+      );
       break;
     case 'get-users-by': {
       const location = await input({ message: '(Optional) Enter a location' });
       const language = await input({ message: '(Optional) Enter a language' });
-      getUsersBy(location, language);
+      getUsersBy(location, language).then(
+        (result: any) => printAndExit(result)
+      );
       break;
     }
     default:
+      printAndExit("No option.");
       break;
     }
   });

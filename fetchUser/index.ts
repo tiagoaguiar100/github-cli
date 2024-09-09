@@ -2,20 +2,20 @@ import { isNotEmpty, uniq } from 'ramda';
 import { getUser, insertUser, User } from '../repository/user';
 import { get } from './util';
 
-
 export const fetchUser = async (username: string) => {
   const userDb = await getUser(username, true);
   if(userDb) {
     console.log("User already exists.");
+    return userDb;
   }
-
   const onSuccess = (response: any) => {
     let user = {};
     if(response.status && response.message){
       console.log(response.message);
+      return null;
     }
 
-    if(isNotEmpty(response)) {
+    if(response && isNotEmpty(response)) {
       user = {
         id: response.login,
         name: response.name,
@@ -29,10 +29,10 @@ export const fetchUser = async (username: string) => {
     return err.message;
   }
 
-  get(`https://api.github.com/users/${username}`, 
+  return get(`https://api.github.com/users/${username}`, 
     onSuccess, 
     onError).then(async result => {
-    if(isNotEmpty(result)) {
+    if(result && isNotEmpty(result)) {
       const repoInfo = await fetchReposByUser(username);
       let languages: string[] = [];
       for (const repo of repoInfo) {
@@ -40,10 +40,9 @@ export const fetchUser = async (username: string) => {
       }
       const user = {...(result as User), languages: uniq(languages)}
       insertUser(user);
-      console.log("User added successfully.");
-      getUser(username);
+      console.log("User added successfully.\n", await getUser(username));
     }
-  }).catch((error: Error) => console.error(error));
+  }).catch((error: Error) => console.log(error));
 }
 
 const fetchReposByUser = (username: string): Promise<any> => {
@@ -57,7 +56,8 @@ const fetchReposByUser = (username: string): Promise<any> => {
   }
 
   const onError = (err: Error) => {
-    return err.message;
+    console.log(err.message);
+    return null;
   }
 
   return get(`https://api.github.com/users/${username}/repos`, 
@@ -65,7 +65,8 @@ const fetchReposByUser = (username: string): Promise<any> => {
     onError)
 }
 
-const fetchLanguagesByRepo = (username: string, repository: string) => {
+const fetchLanguagesByRepo = (
+  username: string, repository: string): Promise<any> => {
   const onSuccess = async (response: any) => {
     if(response.status && response.message){
       console.log(response.message);
@@ -75,7 +76,8 @@ const fetchLanguagesByRepo = (username: string, repository: string) => {
   }
 
   const onError = (err: Error) => {
-    return err.message;
+    console.log(err.message);
+    return null;
   }
 
   return get(`https://api.github.com/repos/` + 

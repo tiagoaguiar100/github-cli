@@ -21,7 +21,6 @@ export function run_sql(file: string) {
     // See also property 'params' for two-step template formatting
   };
 
-  console.log(fullPath);
   const qf = new QueryFile(fullPath, options);
 
   if (qf.error) {

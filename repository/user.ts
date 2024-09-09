@@ -9,7 +9,12 @@ export interface User {
     languages?: string[]
 }
 
-export function getUser(username: string, ignoreNoData?: boolean): User {
+const NO_RESULTS_MESSAGE = "No results.";
+
+export function getUser(
+  username: string, 
+  ignoreNoData?: boolean): 
+  Promise<User> {
   const findUser = new PQ({
     text: 'SELECT * FROM public."User" WHERE id = $1', 
     values: [username]
@@ -17,7 +22,6 @@ export function getUser(username: string, ignoreNoData?: boolean): User {
 
   return getDBConnection().one(findUser)
     .then((user: User) => {
-      console.log(user);
       return user;
     })
     .catch((error: errors.QueryResultError) => {
@@ -26,33 +30,39 @@ export function getUser(username: string, ignoreNoData?: boolean): User {
       }
 
       if(error.code === errors.queryResultErrorCode.noData) {
-        console.log("No results.");
+        console.log(NO_RESULTS_MESSAGE);
+        return null;
       } else {
-        console.log(error);
+        console.log(error.message);
+        return null;
       }
     });
 }
 
-export function getUsers(): User[] {
+export function getUsers(): Promise<User[]> {
   const findUsers = new PQ({
     text: 'SELECT * FROM public."User"'
   });
 
   return getDBConnection().many(findUsers)
     .then((users: User[]) => {
-      console.log(users);
       return users;
     })
     .catch((error: errors.QueryResultError) => {
       if(error.code === errors.queryResultErrorCode.noData) {
-        console.log("No results");
+        console.log(NO_RESULTS_MESSAGE);
+        return null;
       } else {
-        console.log(error);
+        console.log(error.message);
+        return null;
       }
     });
 }
 
-export function getUsersBy(location: string, language: string): User[] {
+export function getUsersBy(
+  location: string, 
+  language: string): 
+  Promise<User[]> {
   let whereClause;
   let values;
 
@@ -80,14 +90,15 @@ export function getUsersBy(location: string, language: string): User[] {
   
   return getDBConnection().many(findUsers)
     .then((users: User[]) => {
-      console.log(users);
       return users;
     })
     .catch((error: errors.QueryResultError) => {
       if(error.code === errors.queryResultErrorCode.noData) {
-        console.log("No results");
+        console.log(NO_RESULTS_MESSAGE);
+        return null;
       } else {
-        console.log(error);
+        console.log(error.message);
+        return null;
       }
     });
 }
