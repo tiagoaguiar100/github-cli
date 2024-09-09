@@ -1,4 +1,5 @@
 import pgPromise from 'pg-promise';
+import { run_sql } from '../sql/util';
 
 /**
  * Initialize DB with 
@@ -14,5 +15,11 @@ export const initDB = () => {
     'github-cli-db';
   
   const pgp = pgPromise({/* Initialization Options */});
-  return pgp(cn);
+  db = pgp(cn);
+
+  db.none(run_sql('create.sql'));
 }
+
+let db: any;
+
+export const getDBConnection = () => db
