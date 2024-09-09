@@ -1,13 +1,7 @@
-import * as https from 'https';
 import { isNotEmpty, uniq } from 'ramda';
 import { getUser, insertUser, User } from '../repository/user';
+import { get } from './util';
 
-const headers =  { 
-  'X-GitHub-Api-Version': '2022-11-28', 
-  accept: 'application/vnd.github+json',
-  authorization: `Bearer ${process.env["GITHUB_TOKEN"]}`,
-  "user-agent": 'node.js'
-};
 
 export const fetchUser = async (username: string) => {
   const userDb = await getUser(username, true);
@@ -56,6 +50,7 @@ const fetchReposByUser = (username: string): Promise<any> => {
   const onSuccess = async (response: any) => {
     if(response.status && response.message){
       console.log(response.message);
+      return null;
     }
 
     return await joinRepoLanguages(response, username);
@@ -72,6 +67,10 @@ const fetchReposByUser = (username: string): Promise<any> => {
 
 const fetchLanguagesByRepo = (username: string, repository: string) => {
   const onSuccess = async (response: any) => {
+    if(response.status && response.message){
+      console.log(response.message);
+      return null;
+    }
     return response;
   }
 
@@ -93,10 +92,10 @@ const fetchLanguagesByRepo = (username: string, repository: string) => {
  * @param username 
  * @param repos 
  */
-async function joinRepoLanguages(
+export async function joinRepoLanguages(
   response: any, 
   username: string) {
-  const repos = []
+  const repos = [];
   for (const repo of response) {
     let moreLanguages: any;
     if (isNotEmpty(repo.language)) {
@@ -111,25 +110,3 @@ async function joinRepoLanguages(
   }
   return repos;
 }
-
-function get(
-  url: string, 
-  onSuccess: any, 
-  onError: any) {
-  return new Promise((resolve, reject) => {
-    https.get(url, 
-      {headers}, res => {
-        const data: any[] = [];    
-        res.on('data', chunk => {
-          data.push(chunk);
-        });
-  
-        res.on('end', () => {
-          const response = JSON.parse(Buffer.concat(data).toString());
-          resolve(onSuccess(response));
-        });
-      }).on('error', err => {
-      reject(onError(err));
-    });
-  });
-};
