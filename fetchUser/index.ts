@@ -1,5 +1,5 @@
 import * as https from 'https';
-import { isEmpty, isNotEmpty, uniq } from 'ramda';
+import { isNotEmpty, uniq } from 'ramda';
 import { getUser, insertUser, User } from '../repository/user';
 
 const headers =  { 
@@ -10,34 +10,34 @@ const headers =  {
 };
 
 export const fetchUser = async (username: string) => {
-  new Promise((resolve, reject) => {
-    https.get(`https://api.github.com/users/${username}`, 
-      {headers}, res => {
-        const data: any[] = [];    
-        res.on('data', chunk => {
-          data.push(chunk);
-        });
-    
-        res.on('end', () => {
-          const response = JSON.parse(Buffer.concat(data).toString());
-          let user = {};
-          if(response.status && response.message){
-            reject(response.message);
-          }
+  const userDb = await getUser(username, true);
+  if(userDb) {
+    console.log("User already exists.");
+  }
 
-          if(isNotEmpty(response)) {
-            user = {
-              id: response.login,
-              name: response.name,
-              location: response.location
-            };
-          }
-          resolve(user)
-        });
-      }).on('error', err => {
-      reject(err.message);
-    });
-  }).then(async result => {
+  const onSuccess = (response: any) => {
+    let user = {};
+    if(response.status && response.message){
+      console.log(response.message);
+    }
+
+    if(isNotEmpty(response)) {
+      user = {
+        id: response.login,
+        name: response.name,
+        location: response.location
+      };
+    }
+    return user;
+  }
+
+  const onError = (err: any) => {
+    return err.message;
+  }
+
+  get(`https://api.github.com/users/${username}`, 
+    onSuccess, 
+    onError).then(async result => {
     if(isNotEmpty(result)) {
       const repoInfo = await fetchReposByUser(username);
       let languages: string[] = [];
@@ -45,62 +45,44 @@ export const fetchUser = async (username: string) => {
         languages = languages.concat(repo.languages);
       }
       const user = {...(result as User), languages: uniq(languages)}
-
-      const userDb = getUser(username, true);
-      if(isEmpty(userDb)) {
-        insertUser(user as User);
-        console.log("User added successfully.");
-        getUser(username);
-      } else {
-        console.log("User already exists.");
-      }
+      insertUser(user);
+      console.log("User added successfully.");
+      getUser(username);
     }
-  }).catch(error => console.error(error));
+  }).catch((error: Error) => console.error(error));
 }
 
 const fetchReposByUser = (username: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    https.get(`https://api.github.com/users/${username}/repos`, 
-      {headers}, res => {
-        const data: any[] = [];        
-        res.on('data', chunk => {
-          data.push(chunk);
-        });
-        
-        res.on('end', async () => {
-          const response = JSON.parse(Buffer.concat(data).toString());
-          if(response.status && response.message){
-            reject(response.message);
-          }
+  const onSuccess = async (response: any) => {
+    if(response.status && response.message){
+      console.log(response.message);
+    }
 
-          resolve(await joinRepoLanguages(response, username));
-        });
-      }).on('error', err => {
-      reject(err.message);
-    });
-  });
+    return await joinRepoLanguages(response, username);
+  }
+
+  const onError = (err: Error) => {
+    return err.message;
+  }
+
+  return get(`https://api.github.com/users/${username}/repos`, 
+    onSuccess, 
+    onError)
 }
 
-const fetchLanguagesByRepo = (username: string, repository: any) => {
-  return new Promise((resolve, reject) => {
-    https.get(`https://api.github.com/repos/` + 
-      `${username}/${repository}/languages`, 
-    {headers}, res => {
+const fetchLanguagesByRepo = (username: string, repository: string) => {
+  const onSuccess = async (response: any) => {
+    return response;
+  }
 
-      const data: any[] = [];        
-      res.on('data', chunk => {
-        data.push(chunk);
-      });
-        
-      res.on('end', () => {
-        const languages = JSON.parse(Buffer.concat(data).toString());
-        resolve(languages);
-      });
-    }).on('error', err => {
-      console.log('Error: ', err.message);
-      reject(err);
-    });
-  });
+  const onError = (err: Error) => {
+    return err.message;
+  }
+
+  return get(`https://api.github.com/repos/` + 
+      `${username}/${repository}/languages`, 
+  onSuccess, 
+  onError)
 }
 
 /**
@@ -129,3 +111,25 @@ async function joinRepoLanguages(
   }
   return repos;
 }
+
+function get(
+  url: string, 
+  onSuccess: any, 
+  onError: any) {
+  return new Promise((resolve, reject) => {
+    https.get(url, 
+      {headers}, res => {
+        const data: any[] = [];    
+        res.on('data', chunk => {
+          data.push(chunk);
+        });
+  
+        res.on('end', () => {
+          const response = JSON.parse(Buffer.concat(data).toString());
+          resolve(onSuccess(response));
+        });
+      }).on('error', err => {
+      reject(onError(err));
+    });
+  });
+};

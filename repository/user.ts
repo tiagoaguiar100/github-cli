@@ -16,13 +16,13 @@ export function getUser(username: string, ignoreNoData?: boolean): User {
   });
 
   return getDBConnection().one(findUser)
-    .then((user: any) => {
+    .then((user: User) => {
       console.log(user);
       return user;
     })
     .catch((error: errors.QueryResultError) => {
       if(error.code === errors.queryResultErrorCode.noData && ignoreNoData) {
-        return;
+        return null;
       }
 
       if(error.code === errors.queryResultErrorCode.noData) {
@@ -39,7 +39,7 @@ export function getUsers(): User[] {
   });
 
   return getDBConnection().many(findUsers)
-    .then((users: any) => {
+    .then((users: User[]) => {
       console.log(users);
       return users;
     })
